@@ -1,4 +1,5 @@
 name: Build-Push-Deploy
+
 on:
   push:
     branches: [ "main" ]
@@ -10,22 +11,28 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
+
     - name: Setup Java
       uses: actions/setup-java@v3
       with:
         distribution: "temurin"
         java-version: "17"
+
     - name: Build with Maven
       run: mvn clean package
-    - name: Loging to Dockerhub
+
+    - name: Login to Dockerhub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - name: Build Docker Image
-      run: docker build -t ${ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1 .
+      run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1 .
+
     - name: Push Docker Image
-      run: docker push ${ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
+      run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
+
     - name: Deploy Container
       uses: appleboy/ssh-action@v1.1.0
       with:
@@ -33,5 +40,7 @@ jobs:
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          docker pull ${ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
-          docker run -d -p 8080:8080 --name java-container ${ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
+          docker stop java-container || true
+          docker rm java-container || true
+          docker run -d -p 8080:8080 --name java-container ${{ secrets.DOCKERHUB_USERNAME }}/java-docker-app:v1
